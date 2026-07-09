@@ -1,12 +1,19 @@
+// js/engine.js
 import { state } from "./state.js";
 import { render } from "./renderer.js";
 import { sync } from "./sync.js";
+import { webrtc } from "./webrtc.js";
 
 class Engine {
   constructor() {
+    // Voice Note State
     this.mediaRecorder = null;
     this.audioChunks = [];
     this.isRecording = false;
+
+    // Live Broadcast State
+    this.liveStream = null;
+    this.isBroadcasting = false;
   }
 
   start() {
@@ -14,6 +21,27 @@ class Engine {
       console.log(`[Realtime Remote Update]: ${updatedKey}`);
       this.render();
     });
+
+    // Bridge: Listen for WebRTC signals coming through our Sync lane
+    window.addEventListener("webrtc-signal-received", async (e) => {
+      const signal = e.detail;
+
+      if (signal.type === "offer") {
+        // Tourist: Receive the guide's offer and send back an answer
+        await webrtc.handleOffer(signal.offer);
+      } else if (signal.type === "answer") {
+        // Guide: Receive the tourist's answer to finalize connection
+        await webrtc.peerConnection.setRemoteDescription(
+          new RTCSessionDescription(signal.answer)
+        );
+      } else if (signal.type === "candidate") {
+        // Both: Add network route candidates as they arrive
+        await webrtc.peerConnection.addIceCandidate(
+          new RTCIceCandidate(signal.candidate)
+        );
+      }
+    });
+
     this.render();
   }
 
@@ -48,7 +76,7 @@ class Engine {
 
     // 2. Image Upload Listeners
     const uploadBtn = document.querySelector("#photo-upload-btn");
-    const fileInput = document.querySelector("#photo-file-input"); // Explicitly defined
+    const fileInput = document.querySelector("#photo-file-input");
 
     if (uploadBtn && fileInput) {
       uploadBtn.addEventListener("click", () => fileInput.click());
@@ -97,13 +125,12 @@ class Engine {
                 sync.broadcastChange("hero-audio", base64Audio);
                 this.render();
               };
-
               reader.readAsDataURL(audioBlob);
             };
 
             this.mediaRecorder.start();
             this.isRecording = true;
-            recordBtn.textContent = "⏹️ Stop & Send Voice Note";
+            recordBtn.textContent = "⏹️ Stop & Save Note";
             recordBtn.style.background = "#27ae60";
             if (statusText) statusText.textContent = "🎙️ Recording audio...";
           } catch (err) {
@@ -118,6 +145,54 @@ class Engine {
           recordBtn.textContent = "🔴 Tap to Record Voice Note";
           recordBtn.style.background = "#e74c3c";
           if (statusText) statusText.textContent = "Processing audio...";
+        }
+      });
+    }
+
+    // 4. Live Broadcast Toggle Listeners
+    const broadcastBtn = document.querySelector("#broadcast-toggle-btn");
+    const broadcastStatus = document.querySelector("#broadcast-status");
+
+    if (broadcastBtn) {
+      broadcastBtn.addEventListener("click", async () => {
+        if (!this.isBroadcasting) {
+          try {
+            // Request mic access and hold it open
+            this.liveStream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+            this.isBroadcasting = true;
+
+            // Trigger the WebRTC broadcast
+            await webrtc.startBroadcasting(this.liveStream);
+
+            // Update UI
+            broadcastBtn.textContent = "🛑 Stop Live Stream";
+            broadcastBtn.style.background = "#e74c3c";
+            if (broadcastStatus)
+              broadcastStatus.textContent = "📡 Mic is live. Broadcasting...";
+
+            // Notify the network that a stream has started
+            sync.broadcastChange("live-stream-status", "active");
+          } catch (err) {
+            console.error("Microphone access error for broadcast:", err);
+            alert("Microphone permission required to start the live stream.");
+          }
+        } else {
+          // Turn off all audio tracks to stop the mic
+          if (this.liveStream) {
+            this.liveStream.getTracks().forEach((track) => track.stop());
+            this.liveStream = null;
+          }
+          this.isBroadcasting = false;
+
+          // Update UI
+          broadcastBtn.textContent = "🎤 Start Live Stream";
+          broadcastBtn.style.background = "#3498db";
+          if (broadcastStatus) broadcastStatus.textContent = "Stream ended.";
+
+          // Notify the network that the stream has stopped
+          sync.broadcastChange("live-stream-status", "inactive");
         }
       });
     }

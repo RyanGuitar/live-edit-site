@@ -1,50 +1,49 @@
-// server.js
-import http from "http";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { WebSocketServer } from "ws";
+const express = require("express");
+const http = require("http");
+const { WebSocketServer } = require("ws");
+const path = require("path");
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
 
-const PORT = process.env.PORT || 8080;
-
-// 1. Create standard HTTP server to serve static frontend files
-const server = http.createServer((req, res) => {
-  let filePath = path.join(__dirname, req.url === "/" ? "index.html" : req.url);
-  const extname = path.extname(filePath);
-
-  let contentType = "text/html";
-  if (extname === ".js") contentType = "text/javascript";
-  if (extname === ".css") contentType = "text/css";
-
-  fs.readFile(filePath, (err, content) => {
-    if (err) {
-      res.writeHead(404);
-      res.end("File Not Found");
-    } else {
-      res.writeHead(200, { "Content-Type": contentType });
-      res.end(content, "utf-8");
-    }
-  });
-});
-
-// 2. Attach WebSocket server to the same HTTP server
-const wss = new WebSocketServer({ server, maxPayload: 10 * 1024 * 1024 });
+// Serve your static vanilla files
+app.use(express.static(path.join(__dirname, "public")));
 
 wss.on("connection", (ws) => {
-  console.log("⚡ Client connected globally");
+  console.log("🔗 Client connected");
 
   ws.on("message", (message) => {
-    wss.clients.forEach((client) => {
-      if (client !== ws && client.readyState === 1) {
-        client.send(message.toString());
+    try {
+      const data = JSON.parse(message);
+
+      // Traffic Cop: Route the message based on its type
+      if (data.type === "state-sync") {
+        // Lane 1: Heavy UI updates (Images, Text, Voice Notes)
+        wss.clients.forEach((client) => {
+          if (client !== ws && client.readyState === 1) {
+            client.send(JSON.stringify(data));
+          }
+        });
+      } else if (data.type === "webrtc-signal") {
+        // Lane 2: Lightning-fast WebRTC handshakes for live streaming
+        wss.clients.forEach((client) => {
+          if (client !== ws && client.readyState === 1) {
+            client.send(JSON.stringify(data));
+          }
+        });
       }
-    });
+    } catch (error) {
+      console.error("Error parsing message:", error);
+    }
+  });
+
+  ws.on("close", () => {
+    console.log("❌ Client disconnected");
   });
 });
 
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
-  console.log(`🚀 Live Edit Engine running on port ${PORT}`);
+  console.log(`🚀 Unified Engine & Signaling server running on port ${PORT}`);
 });
