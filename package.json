@@ -1,0 +1,19 @@
+{
+  "name": "live-edit-site",
+  "version": "1.0.0",
+  "description": "A live editing collaboration tool",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "prettier": "^3.9.4"
+  },
+  "dependencies": {
+    "ws": "^8.21.0"
+  }
+}
