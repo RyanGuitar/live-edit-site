@@ -22,5 +22,10 @@ export const state = {
       value: "https://via.placeholder.com/800x400?text=Upload+Photo",
       editable: true,
     },
+    "hero-audio": {
+      type: "audio",
+      value: "", // Holds base64 audio data string
+      editable: true,
+    },
   },
 };

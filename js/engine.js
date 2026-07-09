@@ -4,8 +4,13 @@ import { render } from "./renderer.js";
 import { sync } from "./sync.js";
 
 class Engine {
+  constructor() {
+    this.mediaRecorder = null;
+    this.audioChunks = [];
+    this.isRecording = false;
+  }
+
   start() {
-    // Listen for remote updates globally
     sync.init((updatedKey) => {
       console.log(`[Realtime Remote Update]: ${updatedKey}`);
       this.render();
@@ -22,7 +27,6 @@ class Engine {
   attachEvents() {
     // 1. Text Editing Listeners
     const editables = document.querySelectorAll("[data-editable]");
-
     editables.forEach((el) => {
       el.contentEditable = "true";
 
@@ -50,12 +54,10 @@ class Engine {
 
     // 2. Image Upload Listeners
     const uploadBtn = document.querySelector("#photo-upload-btn");
-    const fileInput = document.querySelector("#photo-file-input");
+    fileInput = document.querySelector("#photo-file-input");
 
     if (uploadBtn && fileInput) {
-      uploadBtn.addEventListener("click", () => {
-        fileInput.click();
-      });
+      uploadBtn.addEventListener("click", () => fileInput.click());
 
       fileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
@@ -64,20 +66,64 @@ class Engine {
         const reader = new FileReader();
         reader.onload = (event) => {
           const base64Image = event.target.result;
-          const key = "hero-image";
-
-          // Update local state
-          state.elements[key].value = base64Image;
-
-          // Broadcast image payload across WebSockets
-          sync.broadcastChange(key, base64Image);
-
-          // Re-render locally
+          state.elements["hero-image"].value = base64Image;
+          sync.broadcastChange("hero-image", base64Image);
           this.render();
         };
-
-        // Read photo directly into Base64 format
         reader.readAsDataURL(file);
+      });
+    }
+
+    // 3. Voice Note Recording Listeners
+    const recordBtn = document.querySelector("#record-audio-btn");
+    const statusText = document.querySelector("#recording-status");
+
+    if (recordBtn) {
+      recordBtn.addEventListener("click", async () => {
+        if (!this.isRecording) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+            this.mediaRecorder = new MediaRecorder(stream);
+            this.audioChunks = [];
+
+            this.mediaRecorder.ondataavailable = (event) => {
+              this.audioChunks.push(event.data);
+            };
+
+            this.mediaRecorder.onstop = () => {
+              const audioBlob = new Blob(this.audioChunks, {
+                type: "audio/webm",
+              });
+              const reader = new FileReader();
+
+              reader.onload = (event) => {
+                const base64Audio = event.target.result;
+                state.elements["hero-audio"].value = base64Audio;
+                sync.broadcastChange("hero-audio", base64Audio);
+                this.render();
+              };
+
+              reader.readAsDataURL(audioBlob);
+            };
+
+            this.mediaRecorder.start();
+            this.isRecording = true;
+            recordBtn.textContent = "⏹️ Stop & Send Voice Note";
+            recordBtn.style.background = "#27ae60";
+            if (statusText) statusText.textContent = "🎙️ Recording audio...";
+          } catch (err) {
+            console.error("Microphone access denied or not supported:", err);
+            alert("Microphone permission required to record voice notes.");
+          }
+        } else {
+          this.mediaRecorder.stop();
+          this.isRecording = false;
+          recordBtn.textContent = "🔴 Hold/Tap to Record Voice Note";
+          recordBtn.style.background = "#e74c3c";
+          if (statusText) statusText.textContent = "Processing audio...";
+        }
       });
     }
   }
