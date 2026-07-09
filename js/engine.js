@@ -5,8 +5,7 @@ import { sync } from "./sync.js";
 
 class Engine {
   start() {
-    // 1. Initialize real-time listener.
-    // When a remote update comes in, re-render the app.
+    // Listen for remote updates globally
     sync.init((updatedKey) => {
       console.log(`[Realtime Remote Update]: ${updatedKey}`);
       this.render();
@@ -21,6 +20,7 @@ class Engine {
   }
 
   attachEvents() {
+    // 1. Text Editing Listeners
     const editables = document.querySelectorAll("[data-editable]");
 
     editables.forEach((el) => {
@@ -33,13 +33,8 @@ class Engine {
           const newValue = el.textContent.trim();
 
           if (state.elements[key].value !== newValue) {
-            // Update local state
             state.elements[key].value = newValue;
-
-            // 2. Broadcast change to all active clients
             sync.broadcastChange(key, newValue);
-
-            // Re-render locally
             this.render();
           }
         }
@@ -52,6 +47,39 @@ class Engine {
         }
       });
     });
+
+    // 2. Image Upload Listeners
+    const uploadBtn = document.querySelector("#photo-upload-btn");
+    const fileInput = document.querySelector("#photo-file-input");
+
+    if (uploadBtn && fileInput) {
+      uploadBtn.addEventListener("click", () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64Image = event.target.result;
+          const key = "hero-image";
+
+          // Update local state
+          state.elements[key].value = base64Image;
+
+          // Broadcast image payload across WebSockets
+          sync.broadcastChange(key, base64Image);
+
+          // Re-render locally
+          this.render();
+        };
+
+        // Read photo directly into Base64 format
+        reader.readAsDataURL(file);
+      });
+    }
   }
 }
 

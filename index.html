@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -11,6 +11,25 @@
 
   <body>
     <main id="app"></main>
+    <!-- In index.html -->
+    <div class="photo-card">
+      <img
+        id="live-hero-img"
+        src="https://via.placeholder.com/600x400"
+        alt="Live Photo"
+        style="max-width: 100%; height: auto"
+      />
+
+      <!-- File input with camera capture support -->
+      <input
+        type="file"
+        id="photo-input"
+        accept="image/*"
+        capture="environment"
+        style="display: none"
+      />
+      <button id="upload-btn" type="button">📷 Take / Upload Photo</button>
+    </div>
 
     <script type="module" src="js/app.js"></script>
   </body>

@@ -17,5 +17,10 @@ export const state = {
         "We offer authentic, small-group coastal tours and shark spotter charters.",
       editable: true,
     },
+    "hero-image": {
+      type: "image",
+      value: "https://via.placeholder.com/800x400?text=Upload+Photo",
+      editable: true,
+    },
   },
 };

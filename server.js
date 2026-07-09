@@ -31,7 +31,7 @@ const server = http.createServer((req, res) => {
 });
 
 // 2. Attach WebSocket server to the same HTTP server
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, maxPayload: 10 * 1024 * 1024 });
 
 wss.on("connection", (ws) => {
   console.log("⚡ Client connected globally");
