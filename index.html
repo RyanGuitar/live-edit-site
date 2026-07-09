@@ -3,33 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <title>Live Edit Website</title>
-
     <link rel="stylesheet" href="css/style.css" />
   </head>
-
   <body>
-    <main id="app"></main>
-    <!-- In index.html -->
-    <div class="photo-card">
-      <img
-        id="live-hero-img"
-        src="https://via.placeholder.com/600x400"
-        alt="Live Photo"
-        style="max-width: 100%; height: auto"
-      />
-
-      <!-- File input with camera capture support -->
-      <input
-        type="file"
-        id="photo-input"
-        accept="image/*"
-        capture="environment"
-        style="display: none"
-      />
-      <button id="upload-btn" type="button">📷 Take / Upload Photo</button>
-    </div>
+    <!-- The engine will inject everything inside this div -->
+    <div id="app"></div>
 
     <script type="module" src="js/app.js"></script>
   </body>

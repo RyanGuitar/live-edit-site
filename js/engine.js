@@ -1,4 +1,3 @@
-// js/engine.js
 import { state } from "./state.js";
 import { render } from "./renderer.js";
 import { sync } from "./sync.js";
@@ -15,7 +14,6 @@ class Engine {
       console.log(`[Realtime Remote Update]: ${updatedKey}`);
       this.render();
     });
-
     this.render();
   }
 
@@ -29,13 +27,10 @@ class Engine {
     const editables = document.querySelectorAll("[data-editable]");
     editables.forEach((el) => {
       el.contentEditable = "true";
-
       el.addEventListener("blur", () => {
         const key = el.dataset.element;
-
         if (key && state.elements[key]) {
           const newValue = el.textContent.trim();
-
           if (state.elements[key].value !== newValue) {
             state.elements[key].value = newValue;
             sync.broadcastChange(key, newValue);
@@ -43,7 +38,6 @@ class Engine {
           }
         }
       });
-
       el.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && el.tagName.startsWith("H")) {
           e.preventDefault();
@@ -54,11 +48,10 @@ class Engine {
 
     // 2. Image Upload Listeners
     const uploadBtn = document.querySelector("#photo-upload-btn");
-    const fileInput = document.querySelector("#photo-file-input"); // Fixed missing 'const'
+    const fileInput = document.querySelector("#photo-file-input"); // Explicitly defined
 
     if (uploadBtn && fileInput) {
       uploadBtn.addEventListener("click", () => fileInput.click());
-
       fileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -122,7 +115,7 @@ class Engine {
             this.mediaRecorder.stop();
           }
           this.isRecording = false;
-          recordBtn.textContent = "🔴 Hold/Tap to Record Voice Note";
+          recordBtn.textContent = "🔴 Tap to Record Voice Note";
           recordBtn.style.background = "#e74c3c";
           if (statusText) statusText.textContent = "Processing audio...";
         }

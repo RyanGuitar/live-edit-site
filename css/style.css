@@ -30,14 +30,10 @@ body {
   line-height: 1.6;
 }
 
-/* Prevent text selection and long-press callouts on buttons */
-button,
+/* Strictly disables text selection and callouts on mobile */
 .no-select {
-  -webkit-touch-callout: none; /* iOS Safari */
-  -webkit-user-select: none; /* Safari */
-  -khtml-user-select: none; /* Konqueror HTML */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* Internet Explorer/Edge */
-  user-select: none; /* Non-prefixed version */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
