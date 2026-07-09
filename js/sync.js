@@ -3,26 +3,14 @@ import { state } from "./state.js";
 
 class SyncEngine {
   constructor() {
-    // Automatically set socket URL depending on environment
-    const isLocal =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1";
+    // Automatically match ws:// or wss:// based on current protocol
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.host;
 
-    // Replace this URL with your hosted server domain later (e.g., wss://my-sync-server.onrender.com)
-    const productionServerUrl = "wss://your-websocket-server-name.onrender.com";
-
-    const socketUrl = isLocal
-      ? `ws://${window.location.hostname}:8080`
-      : productionServerUrl;
-
-    this.socket = new WebSocket(socketUrl);
+    this.socket = new WebSocket(`${protocol}//${host}`);
 
     this.socket.onopen = () => {
       console.log("⚡ Connected to Global Sync Engine");
-    };
-
-    this.socket.onerror = (err) => {
-      console.error("WebSocket Error:", err);
     };
   }
 

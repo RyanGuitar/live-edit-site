@@ -1,26 +1,50 @@
 // server.js
+import http from "http";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
 
-// Use host-provided PORT or fallback to 8080 for local dev
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const PORT = process.env.PORT || 8080;
 
-const wss = new WebSocketServer({ port: PORT });
+// 1. Create standard HTTP server to serve static frontend files
+const server = http.createServer((req, res) => {
+  let filePath = path.join(__dirname, req.url === "/" ? "index.html" : req.url);
+  const extname = path.extname(filePath);
 
-console.log(`🚀 Realtime Sync Server live on port ${PORT}`);
+  let contentType = "text/html";
+  if (extname === ".js") contentType = "text/javascript";
+  if (extname === ".css") contentType = "text/css";
+
+  fs.readFile(filePath, (err, content) => {
+    if (err) {
+      res.writeHead(404);
+      res.end("File Not Found");
+    } else {
+      res.writeHead(200, { "Content-Type": contentType });
+      res.end(content, "utf-8");
+    }
+  });
+});
+
+// 2. Attach WebSocket server to the same HTTP server
+const wss = new WebSocketServer({ server });
 
 wss.on("connection", (ws) => {
   console.log("⚡ Client connected globally");
 
   ws.on("message", (message) => {
-    // Relay edit to all other active clients across the globe
     wss.clients.forEach((client) => {
       if (client !== ws && client.readyState === 1) {
         client.send(message.toString());
       }
     });
   });
+});
 
-  ws.on("close", () => {
-    console.log("❌ Client disconnected");
-  });
+server.listen(PORT, () => {
+  console.log(`🚀 Live Edit Engine running on port ${PORT}`);
 });
