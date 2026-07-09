@@ -54,7 +54,7 @@ class Engine {
 
     // 2. Image Upload Listeners
     const uploadBtn = document.querySelector("#photo-upload-btn");
-    fileInput = document.querySelector("#photo-file-input");
+    const fileInput = document.querySelector("#photo-file-input"); // Fixed missing 'const'
 
     if (uploadBtn && fileInput) {
       uploadBtn.addEventListener("click", () => fileInput.click());
@@ -114,11 +114,13 @@ class Engine {
             recordBtn.style.background = "#27ae60";
             if (statusText) statusText.textContent = "🎙️ Recording audio...";
           } catch (err) {
-            console.error("Microphone access denied or not supported:", err);
+            console.error("Microphone access error:", err);
             alert("Microphone permission required to record voice notes.");
           }
         } else {
-          this.mediaRecorder.stop();
+          if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
+            this.mediaRecorder.stop();
+          }
           this.isRecording = false;
           recordBtn.textContent = "🔴 Hold/Tap to Record Voice Note";
           recordBtn.style.background = "#e74c3c";
