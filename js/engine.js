@@ -6,12 +6,10 @@ import { webrtc } from "./webrtc.js";
 
 class Engine {
   constructor() {
-    // Voice Note State
     this.mediaRecorder = null;
     this.audioChunks = [];
     this.isRecording = false;
 
-    // Live Broadcast State
     this.liveStream = null;
     this.isBroadcasting = false;
   }
@@ -22,23 +20,50 @@ class Engine {
       this.render();
     });
 
-    // Bridge: Listen for WebRTC signals coming through our Sync lane
+    // Bridge: Listen for targeted WebRTC mesh signals
     window.addEventListener("webrtc-signal-received", async (e) => {
       const signal = e.detail;
 
-      if (signal.type === "offer") {
-        // Tourist: Receive the guide's offer and send back an answer
-        await webrtc.handleOffer(signal.offer);
-      } else if (signal.type === "answer") {
-        // Guide: Receive the tourist's answer to finalize connection
-        await webrtc.peerConnection.setRemoteDescription(
-          new RTCSessionDescription(signal.answer)
-        );
-      } else if (signal.type === "candidate") {
-        // Both: Add network route candidates as they arrive
-        await webrtc.peerConnection.addIceCandidate(
-          new RTCIceCandidate(signal.candidate)
-        );
+      // Ignore targeted signals that are not meant for this specific device
+      if (signal.target && signal.target !== webrtc.myId) return;
+
+      try {
+        if (signal.type === "stream-active") {
+          // Viewer: Broadcaster just went live! Request an offer to connect.
+          if (!webrtc.isBroadcaster) {
+            sync.broadcastSignal({
+              type: "request-offer",
+              target: signal.sender,
+              sender: webrtc.myId,
+            });
+          }
+        } else if (signal.type === "request-offer") {
+          // Broadcaster: A tourist wants to connect. Create a dedicated peer for them.
+          if (webrtc.isBroadcaster) {
+            await webrtc.createBroadcasterPeer(signal.sender);
+          }
+        } else if (signal.type === "offer") {
+          // Viewer: Receive the guide's offer and send back an answer
+          await webrtc.handleOffer(signal.offer, signal.sender, (stream) => {
+            // Create or grab an audio element to actually play the sound
+            let audioEl = document.getElementById("live-audio-playback");
+            if (!audioEl) {
+              audioEl = document.createElement("audio");
+              audioEl.id = "live-audio-playback";
+              audioEl.autoplay = true;
+              document.body.appendChild(audioEl);
+            }
+            audioEl.srcObject = stream;
+          });
+        } else if (signal.type === "answer") {
+          // Broadcaster: Receive the tourist's answer to finalize their specific connection
+          await webrtc.handleAnswer(signal.answer, signal.sender);
+        } else if (signal.type === "candidate") {
+          // Both: Add network route candidates as they arrive
+          await webrtc.handleCandidate(signal.candidate, signal.sender);
+        }
+      } catch (err) {
+        console.error("WebRTC Signaling Error:", err);
       }
     });
 
@@ -157,29 +182,30 @@ class Engine {
       broadcastBtn.addEventListener("click", async () => {
         if (!this.isBroadcasting) {
           try {
-            // Request mic access and hold it open
             this.liveStream = await navigator.mediaDevices.getUserMedia({
               audio: true,
             });
             this.isBroadcasting = true;
 
-            // Trigger the WebRTC broadcast
+            // Trigger the WebRTC 1-to-many broadcast
             await webrtc.startBroadcasting(this.liveStream);
 
             // Update UI
             broadcastBtn.textContent = "🛑 Stop Live Stream";
             broadcastBtn.style.background = "#e74c3c";
             if (broadcastStatus)
-              broadcastStatus.textContent = "📡 Mic is live. Broadcasting...";
+              broadcastStatus.textContent =
+                "📡 Mic is live. Broadcasting to all viewers...";
 
-            // Notify the network that a stream has started
             sync.broadcastChange("live-stream-status", "active");
           } catch (err) {
             console.error("Microphone access error for broadcast:", err);
             alert("Microphone permission required to start the live stream.");
           }
         } else {
-          // Turn off all audio tracks to stop the mic
+          // Stop broadcast and clean up all peer connections
+          webrtc.stopBroadcasting();
+
           if (this.liveStream) {
             this.liveStream.getTracks().forEach((track) => track.stop());
             this.liveStream = null;
@@ -191,7 +217,6 @@ class Engine {
           broadcastBtn.style.background = "#3498db";
           if (broadcastStatus) broadcastStatus.textContent = "Stream ended.";
 
-          // Notify the network that the stream has stopped
           sync.broadcastChange("live-stream-status", "inactive");
         }
       });
