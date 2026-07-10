@@ -1,7 +1,10 @@
-const express = require("express");
-const http = require("http");
-const { WebSocketServer } = require("ws");
-const path = require("path");
+import express from "express";
+import http from "http";
+import { WebSocketServer } from "ws";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const server = http.createServer(app);
@@ -18,15 +21,7 @@ wss.on("connection", (ws) => {
       const data = JSON.parse(message);
 
       // Traffic Cop: Route the message based on its type
-      if (data.type === "state-sync") {
-        // Lane 1: Heavy UI updates (Images, Text, Voice Notes)
-        wss.clients.forEach((client) => {
-          if (client !== ws && client.readyState === 1) {
-            client.send(JSON.stringify(data));
-          }
-        });
-      } else if (data.type === "webrtc-signal") {
-        // Lane 2: Lightning-fast WebRTC handshakes for live streaming
+      if (data.type === "state-sync" || data.type === "webrtc-signal") {
         wss.clients.forEach((client) => {
           if (client !== ws && client.readyState === 1) {
             client.send(JSON.stringify(data));
