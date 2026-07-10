@@ -10,8 +10,14 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-// Serve your static vanilla files
-app.use(express.static(path.join(__dirname, "public")));
+// Serve specific folders for assets
+app.use("/css", express.static(path.join(__dirname, "css")));
+app.use("/js", express.static(path.join(__dirname, "js")));
+
+// Serve the index.html on the root route
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 wss.on("connection", (ws) => {
   console.log("🔗 Client connected");
